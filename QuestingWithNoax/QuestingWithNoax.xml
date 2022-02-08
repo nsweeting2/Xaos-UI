@@ -14,7 +14,7 @@
 	</AliasPackage>
 	<ActionPackage />
 	<ScriptPackage>
-		<Script isActive="no" isFolder="no">
+		<Script isActive="yes" isFolder="no">
 			<name>msdp.grab_QUEST_LIST</name>
 			<packageName></packageName>
 			<script>--This function fires on the msdp.QUEST_LIST event
