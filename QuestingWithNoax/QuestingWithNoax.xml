@@ -192,6 +192,7 @@ local function updatePackage()
   qwn.updating = nil
   debugEcho("updatePackage() is complete")
   noaxEcho("Now You're Questing With Noax Script updated successfully!")
+  config()
 end
 
 function qwn.downloadPackage()
@@ -199,7 +200,7 @@ function qwn.downloadPackage()
   local path, file = profilePath .. "/questing downloads", "/QuestingWithNoax.xml"
   debugEcho("qwn.downloading set to true")
   qwn.downloading = true
-  debugEcho("downloading xml file")
+  debugEcho("downloading xml file from " .. tostring(qwn.downloadPath))
   downloadFile(path .. file, qwn.downloadPath .. file)
   debugEcho("qwn.downloadPackage() is complete")
 end
