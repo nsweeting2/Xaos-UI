@@ -81,9 +81,7 @@ profilePath = profilePath:gsub("\\","/")
 
 --Setup global table for QuestingWithNoax, we will nest almost everything in here.
 qwn = qwn or {
-  defaults = { --default config data
-	debug = true, --should we be showing debug messages
-	error = true, --should we be showing error messages
+  defaults = { --default configs data
 	ignoreQuests = {},
 	},
   configs = {}, --config data in the future
@@ -173,7 +171,7 @@ end
 function qwn.eventHandler(event, ...)
   cecho(debugTag .. "Questing Script: qwnEventHandler() invoked\n")
   if event == "sysDataSendRequest" then
-    --cecho(debugTag .. "sysDatSendRequest\n")
+    cecho(debugTag .. "Event: sysDatSendRequest\n")
     --check to prevent multiple version checks in a row without user intervention
     if qwn.updateWaiting and qwn.updateTimer then
       qwn.updateWaiting = nil
@@ -183,6 +181,7 @@ function qwn.eventHandler(event, ...)
     end
   elseif event == "sysDownloadDone" and downloading then
     local file = arg[1]
+    cecho(debugTag .. "Event: sysDownloadDone, File: " ..tostring(file) .. "\n")
     if string.ends(file,"/versions.lua") then
       compareVersion()
     elseif string.ends(file,"/QuestingWithNoax.xml") then
@@ -190,6 +189,7 @@ function qwn.eventHandler(event, ...)
     end
   elseif event == "sysDownloadError" and downloading then
     local file = arg[1]
+    cecho(debugTag .. "Event: sysDownloadError, File: " ..tostring(file) .. "\n")
     if string.ends(file,"/versions.lua") then
       cecho(errTag .. "qwn dailed to download file versions.lua")
     elseif string.ends(file,"/QuestingWithNoax.xml") then
@@ -197,14 +197,16 @@ function qwn.eventHandler(event, ...)
     end
   elseif event == "sysLoadEvent" or event == "sysInstall" then
     --moved to AYT telnet event so it happenss post login
+    --cecho(debugTag .. "Event: sysLoadEvent OR sysInstall\n")
     --config()
   elseif event == "sysUninstallPackage" and not qwn.updating and arg[1] == "QuestingWithNoax" then
+    cecho(debugTag .. "Event: sysUninstallPackage\n")
     for _,id in ipairs(qwn.registeredEvents) do
       killAnonymousEventHandler(id)
     end
   --the mudserver has been coded to send IAC AYT on connect and reconnect
   elseif event == "sysTelnetEvent" and tonumber(arg[1]) == 246 then --246 is AYT
-    --cecho(debugTag .. "sysTelnetEvent was AYT")
+    cecho(debugTag .. "Event: sysTelnetEvent, Code: " .. tostring(arg[1]) .. "\n")
     config()
     qwn.downloadVersions()
   end
