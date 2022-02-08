@@ -87,7 +87,7 @@ qwn = qwn or {
 	ignoreQuests = {},
 	},
   config = {}, --config data in the future
-  version = 2.2, --version we compare for updating
+  version = 2.0, --version we compare for updating
   downloading = false, --if we are downloading a update
   downloadPath = "https://raw.githubusercontent.com/nsweeting2/Xaos-UI", --path we download files from
   updating = false, --if we are installing and update
