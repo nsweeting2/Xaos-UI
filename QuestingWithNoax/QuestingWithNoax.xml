@@ -67,6 +67,9 @@ end</script>
 --Created July 2019, MSDP'd October 2020
 
 --Updater code based on Jor'Mox's Generic Map Script
+--I opted to check for updates only when a character is
+--connected or reconnected to the server to save on complexity
+--I do this by handling a IAC AYT signal with sysTelnetEvent
 
 --Requires the msdp protocol.
 
@@ -77,17 +80,15 @@ msdp = msdp or {}
 
 --profilePath so we can use in in functions below
 local profilePath = getMudletHomeDir()
-profilePath = profilePath:gsub("\\","/")
+profilePath = profilePath:gsub("\\","/") --fix the path for windows folks
 
 --Setup global table for QuestingWithNoax, we will nest almost everything in here.
 qwn = qwn or {
-  defaults = { --default configs data
-	ignoreQuests = {},
-	},
-  configs = {}, --config data in the future
+  ignoreQuests = {},
+  debug = true,
   version = 2.0, --version we compare for updating
   downloading = false, --if we are downloading a update
-  downloadPath = "https://raw.githubusercontent.com/nsweeting2/Xaos-UI", --path we download files from
+  downloadPath = "https://raw.githubusercontent.com/nsweeting2/Xaos-UI/main/QuestingWithNoax/", --path we download files from
   updating = false, --if we are installing and update
   }
 
@@ -96,127 +97,163 @@ local noaxTag = "&lt;DarkViolet&gt;[&lt;ansiMagenta&gt; NOAX &lt;DarkViolet&gt;]
 local debugTag = "&lt;SkyBlue&gt;[DEBUG ]  - &lt;reset&gt;"
 local errTag = "&lt;ansiRed&gt;(&lt;Red&gt;ERROR &lt;ansiRed&gt;]  - &lt;reset&gt;"
 
+--echo functions for style points
+local function debugEcho(text)
+  if qwn.debug then
+    cecho(debugTag .. text .. "\n")
+  end  
+end
+
+local function noaxEcho(text)
+    cecho(noaxTag .. text .. "\n")
+end
+
+local function errorEcho(text)
+  if qwn.debug then
+    cecho(errTag .. text .. "\n")
+  end  
+end
+
 local function config()
-  cecho(debugTag .. "Questing Script: config() invoked\n")
+  debugEcho("Questing Script: config() invoked")
   local defaults = qwn.defaults
   local configs = qwn.configs or {}
   local path = profilePath .. "/questing downloads"
-  if not io.exists(path) then lfs.mkdir(path) end
-  --load stored configs from file if it exists
-  if io.exists(path.."/configs.lua") then
-    table.load(path.."/configs.lua",configs)
+  if not io.exists(path) then
+    debugEcho("creating questing downloads folder")
+    lfs.mkdir(path)
+  else
+    debugEcho("questing downloads folder already exists")
   end
+  --load stored configs from file if it exists
+  --if io.exists(path.."/configs.lua") then
+    --table.load(path.."/configs.lua",configs)
+  --end
   -- overwrite default values with stored config values
-  configs = table.update(defaults, configs)
-  qwn.configs = configs
+  --configs = table.update(defaults, configs)
+  --qwn.configs = configs
   --we do not need to change update path
   --update to the current download path
   --if qwn.configs.downloadPath == " " then
     --qwn.configs.downloadPath = " "
   --end
   --configure the msdp we need for questing
+  debugEcho("Registering for msdp.QUEST_LIST")
   sendMSDP("REPORT","QUEST_LIST")
-  cecho(noaxTag .. "Now You're Questing With Noax has been registered.\n")
+  debugEcho("Config() is complete")
+  noaxEcho("Now You're Questing With Noax has been registered.")
 end
 
 local function compareVersion()
-  cecho(debugTag .. "Questing Script: compareVersion() invoked\n")
-  qwn.downloading = false
+  debugEcho("Questing Script: compareVersion() invoked")
   local path = profilePath .. "/questing downloads/versions.lua"
   local versions = {}
   table.load(path, versions)
   local pos = table.index_of(versions, qwn.version) or 0
   if pos ~= #versions then
+    debugEcho("qwn is out of date")
+    debugEcho("update alias enabled")
     enableAlias("Questing Update Alias")
-    cecho(string.format(noaxTag .. "Questing With Noax Script is currently <red>%d<reset> versions behind.\n",#versions - pos))
-    cecho(noaxTag .. "To update now, please type: <yellow>questing update<reset>\n")
+    noaxEcho(string.format("Questing With Noax Script is currently %d versions behind.",#versions - pos))
+    noaxEcho("To update now, please type: questing update")
+  else
+    debugEcho("qwn is up to date")
   end
-  qwn.updateTimer = tempTimer(3600, [[qwn.checkVersion()]])
+  debugEcho("compareVersions() is complete")
 end
 
 function qwn.downloadVersions()
-  cecho(debugTag .. "Questing Script: qwn.downloadVersions() invoked\n")
-  if qwn.updateTimer then
-    killTimer(qwn.updateTimer)
-    qwn.updateTimer = nil
-  end
-  if not qwn.updateWaiting and qwn.downloadPath ~= "" then
+  debugEcho("Questing Script: qwn.downloadVersions() invoked")
+  if qwn.downloadPath ~= "" then
+    debugEcho("pre download check passed")
     local path, file = profilePath .. "/questing downloads", "/versions.lua"
+    debugEcho("qwn.downloading set to true")
     qwn.downloading = true
+    debugEcho("downloading lua file from " .. tostring(qwn.downloadPath))
     downloadFile(path .. file, qwn.downloadPath .. file)
-    qwn.updateWaiting = true
+  else
+    debugEcho("pre download check failed")
   end
+  debugEcho("qwn.downloadVersions() is complete")
 end
 
 local function updatePackage()
-  cecho(debugTag .. "Questing Script: updatePackage() invoked\n")
-  downloading = false
+  debugEcho("Questing Script: updatePackage() invoked")
   local path = profilePath .. "/questing downloads/QuestingWithNoax.xml"
+  debugEcho("update alias disabled")
   disableAlias("Questing Update Alias")
+  debugEcho("qwn.updating set to true")
   qwn.updating = true
+  debugEcho("uninstalling QuestingWithNoax")
   uninstallPackage("QuestingWithNoax")
+  debugEcho("reinstalling QuestingWithNoax")
   installPackage(path)
+  debugEcho("qwn.updating set to nil")
   qwn.updating = nil
-  cecho(noaxTag .. "Now You're Questing With Noax Script updated successfully!")
+  debugEcho("updatePackage() is complete")
+  noaxEcho("Now You're Questing With Noax Script updated successfully!")
 end
 
 function qwn.downloadPackage()
-  cecho(debugTag .. "Questing Script: updatePackage() invoked\n")
+  debugEcho("Questing Script: downloadPackage() invoked\n")
   local path, file = profilePath .. "/questing downloads", "/QuestingWithNoax.xml"
+  debugEcho("qwn.downloading set to true")
   qwn.downloading = true
+  debugEcho("downloading xml file")
   downloadFile(path .. file, qwn.downloadPath .. file)
+  debugEcho("qwn.downloadPackage() is complete")
 end
 
 --Event handler, what we do on what event
 function qwn.eventHandler(event, ...)
-  cecho(debugTag .. "Questing Script: qwnEventHandler() invoked\n")
-  if event == "sysDataSendRequest" then
-    cecho(debugTag .. "Event: sysDatSendRequest\n")
-    --check to prevent multiple version checks in a row without user intervention
-    if qwn.updateWaiting and qwn.updateTimer then
-      qwn.updateWaiting = nil
-    --check to ensure version check cycle is started
-    elseif not qwn.updateWaiting and not qwn.updateTimer then
-      qwn.downloadVersions()
-    end
-  elseif event == "sysDownloadDone" and downloading then
+  debugEcho("Questing Script: qwnEventHandler() invoked")
+  if event == "sysDownloadDone" and qwn.downloading then
     local file = arg[1]
-    cecho(debugTag .. "Event: sysDownloadDone, File: " ..tostring(file) .. "\n")
+    debugEcho("event: sysDownloadDone, file: " ..tostring(file))
     if string.ends(file,"/versions.lua") then
+      debugEcho("qwn.downloading set to false")
+      qwn.downloading = false
       compareVersion()
     elseif string.ends(file,"/QuestingWithNoax.xml") then
+      debugEcho("qwn.downloading set to false")
+      qwn.downloading = false
       updatePackage()
+    else
+      debugEcho("file was not a file we handle")
     end
   elseif event == "sysDownloadError" and downloading then
     local file = arg[1]
-    cecho(debugTag .. "Event: sysDownloadError, File: " ..tostring(file) .. "\n")
+    debugEcho("event: sysDownloadError, file: " ..tostring(file))
     if string.ends(file,"/versions.lua") then
-      cecho(errTag .. "qwn dailed to download file versions.lua")
+      errorEcho("qwn failed to download file versions.lua")
     elseif string.ends(file,"/QuestingWithNoax.xml") then
-      cecho(errTag .. "qwn dailed to download file QuestingWithNoax.xml")
+      errorEcho("qwn failed to download file QuestingWithNoax.xml")
+    else
+      debugEcho("file was not a file we handle")
     end
-  elseif event == "sysLoadEvent" or event == "sysInstall" then
-    --moved to AYT telnet event so it happenss post login
-    --cecho(debugTag .. "Event: sysLoadEvent OR sysInstall\n")
-    --config()
   elseif event == "sysUninstallPackage" and not qwn.updating and arg[1] == "QuestingWithNoax" then
-    cecho(debugTag .. "Event: sysUninstallPackage\n")
+    debugEcho("event: sysUninstallPackage")
     for _,id in ipairs(qwn.registeredEvents) do
       killAnonymousEventHandler(id)
     end
   --the mudserver has been coded to send IAC AYT on connect and reconnect
-  elseif event == "sysTelnetEvent" and tonumber(arg[1]) == 246 then --246 is AYT
-    cecho(debugTag .. "Event: sysTelnetEvent, Code: " .. tostring(arg[1]) .. "\n")
-    config()
-    qwn.downloadVersions()
+  elseif event == "sysTelnetEvent" then
+    debugEcho("event: sysTelnetEvent")
+    if tonumber(arg[1]) == 246 then --246 is AYT
+      debugEcho("handled code: " .. tostring(arg[1]))
+      debugEcho("downloading set to false")
+      qwn.downloading = false
+      config()
+      qwn.downloadVersions()
+    else
+      debugEcho("unhandled code: " .. tostring(arg[1]))
+    end
   end
 end
 
 qwn.registeredEvents = { --all of the events we will need to trigger on
   registerAnonymousEventHandler("sysDownloadDone", "qwn.eventHandler"),
   registerAnonymousEventHandler("sysDownloadError", "qwn.eventHandler"),
-  registerAnonymousEventHandler("sysLoadEvent", "qwn.eventHandler"),
-  registerAnonymousEventHandler("sysInstall", "qwn.eventHandler"),
   registerAnonymousEventHandler("sysDataSendRequest", "qwn.eventHandler"),
   registerAnonymousEventHandler("sysUninstallPackage", "qwn.eventHandler"),
   registerAnonymousEventHandler("sysTelnetEvent", "qwn.eventHandler"),
