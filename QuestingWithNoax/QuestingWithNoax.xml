@@ -28,8 +28,6 @@
 function msdp.grab_QUEST_LIST()
   --cecho("&lt;yellow&gt;[ DEBUG ] - &lt;grey&gt;QUEST_LIST:\n")
   --display(msdp.QUEST_LIST)
-  --msdp.QUEST_LIST came in so clearly we are setup
-  qwn.setup = true
   --check if we got a empty table, if so we are done
   if msdp.QUEST_LIST == "" then
     return
