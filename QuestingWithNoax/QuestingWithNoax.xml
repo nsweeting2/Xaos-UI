@@ -6,7 +6,7 @@
 	<AliasPackage>
 		<Alias isActive="yes" isFolder="no">
 			<name>Questing Update Alias</name>
-			<script>qwn.updateVersion()</script>
+			<script>qwn.downloadPackage()</script>
 			<command></command>
 			<packageName></packageName>
 			<regex>^questing update$</regex>
