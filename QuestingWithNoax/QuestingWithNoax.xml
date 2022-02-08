@@ -115,8 +115,8 @@ local function config()
 
   --we do not need to change update path
   --update to the current download path
-  --if qwn.configs.downloadPath == " " then
-    --qwn.configs.downloadPath = " "
+  --if qwn.downloadPath == " " then
+    --qwn.downloadPath = " "
   --end
 
   --configure the msdp we need for questing
@@ -143,7 +143,7 @@ function qwn.downloadVersions()
     killTimer(qwn.updateTimer)
     qwn.updateTimer = nil
   end
-  if not qwn.updateWaiting and qwn.configs.downloadPath ~= "" then
+  if not qwn.updateWaiting and qwn.downloadPath ~= "" then
     local path, file = profilePath .. "/questing downloads", "/versions.lua"
     qwn.downloading = true
     downloadFile(path .. file, qwn.downloadPath .. file)
