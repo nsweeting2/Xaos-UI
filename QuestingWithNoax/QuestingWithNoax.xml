@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE MudletPackage>
+<MudletPackage version="1.001">
+	<TriggerPackage />
+	<TimerPackage />
+	<AliasPackage>
+		<Alias isActive="yes" isFolder="no">
+			<name>Questing Update Alias</name>
+			<script>qwn.updateVersion()</script>
+			<command></command>
+			<packageName></packageName>
+			<regex>^questing update$</regex>
+		</Alias>
+	</AliasPackage>
+	<ActionPackage />
+	<ScriptPackage>
+		<Script isActive="no" isFolder="no">
+			<name>msdp.grab_QUEST_LIST</name>
+			<packageName></packageName>
+			<script>--This function fires on the msdp.QUEST_LIST event
+--msdp.QUEST_LIST is a table of comma delimited strings
+--each string is a list of quests from a questmaster
+--msdp.QUEST_LIST happens when you walk into a room with a questmaster
+--Values are formatted like this, questName:action
+--questName contains the string the game expects for the quest
+--action contains complete/incomplete/request
+
+function msdp.grab_QUEST_LIST()
+  --cecho("&lt;yellow&gt;[ DEBUG ] - &lt;grey&gt;QUEST_LIST:\n")
+  --display(msdp.QUEST_LIST)
+  --msdp.QUEST_LIST came in so clearly we are setup
+  qwn.setup = true
+  --check if we got a empty table, if so we are done
+  if msdp.QUEST_LIST == "" then
+    return
+  end
+  --A table for us to turn our string into a table
+  --all questmasters will be processed by this
+  local quests = {}
+  for qm, q in pairs(msdp.QUEST_LIST) do
+    for quest in rex.gmatch(tostring(q), [[(.+?\:\w+),]]) do
+      table.insert(quests, quest)
+    end
+  end
+  --Now we loop the quests table and send commands
+  for k, v in pairs(quests) do
+    local quest = ""
+    local action = ""
+    quest, action = rex.match(tostring(v), [[(.+?):(\w+)]])
+    if tostring(action) == "request" then
+      send("quest request " .. tostring(quest))
+    end
+    if tostring(action) == "completed" then
+      send("quest completed " .. tostring(quest))
+    end
+  end
+end</script>
+			<eventHandlerList>
+				<string>msdp.QUEST_LIST</string>
+			</eventHandlerList>
+		</Script>
+		<Script isActive="yes" isFolder="no">
+			<name>Questing Script</name>
+			<packageName></packageName>
+			<script>--Xaos automatic questing written by Noax.
+--Comically refered to by: Now you're questing with Noax.
+--Created July 2019, MSDP'd October 2020
+
+--Updater code based on Jor'Mox's Generic Map Script
+
+--Requires the msdp protocol.
+
+--Setup global table for msdp, the mud/client will nest everything in here.
+--Keep in mind other packages will work with this table.
+--Table should always be created as seen below, don't overwrite.
+msdp = msdp or {}
+
+--profilePath so we can use in in functions below
+local profilePath = getMudletHomeDir()
+profilePath = profilePath:gsub("\\","/")
+
+--Setup global table for QuestingWithNoax, we will nest almost everything in here.
+qwn = qwn or {
+  defaults = { --default config data
+	debug = true, --should we be showing debug messages
+	error = true, --should we be showing error messages
+	ignoreQuests = {},
+	},
+  config = {}, --config data in the future
+  version = 2.2, --version we compare for updating
+  downloading = false, --if we are downloading a update
+  downloadPath = "https://raw.githubusercontent.com/nsweeting2/Xaos-UI", --path we download files from
+  updating = false, --if we are installing and update
+  }
+
+--formatting for our standardized echos
+local noaxTag = "&lt;DarkViolet&gt;[&lt;ansiMagenta&gt; NOAX &lt;DarkViolet&gt;]  - &lt;reset&gt;"
+local debugTag = "&lt;SkyBlue&gt;[DEBUG ]  - &lt;reset&gt;"
+local errTag = "&lt;ansiRed&gt;(&lt;Red&gt;ERROR &lt;ansiRed&gt;]  - &lt;reset&gt;"
+
+local function config()
+  local defaults = qwn.defaults
+  local configs = qwn.configs or {}
+  local path = profilePath .. "/questing downloads"
+  --cecho(debugTag .. "config() invoked\n")
+  if not io.exists(path) then lfs.mkdir(path) end
+  --load stored configs from file if it exists
+  if io.exists(path.."/configs.lua") then
+    table.load(path.."/configs.lua",configs)
+  end
+
+  -- overwrite default values with stored config values
+  configs = table.update(defaults, configs)
+  qwn.configs = configs
+
+  --we do not need to change update path
+  --update to the current download path
+  --if qwn.configs.downloadPath == " " then
+    --qwn.configs.downloadPath = " "
+  --end
+
+  --configure the msdp we need for questing
+  sendMSDP("REPORT","QUEST_LIST")
+  cecho(noaxTag .. "Now You're Questing With Noax has been registered.\n")
+end
+
+local function compareVersion()
+  qwn.downloading = false
+  local path = profilePath .. "/questing downloads/versions.lua"
+  local versions = {}
+  table.load(path, versions)
+  local pos = table.index_of(versions, qwn.version) or 0
+  if pos ~= #versions then
+    enableAlias("Questing Update Alias")
+    cecho(string.format(noaxTag .. "Questing With Noax Script is currently &lt;red&gt;%d&lt;reset&gt; versions behind.\n",#versions - pos))
+    cecho(noaxTag .. "To update now, please type: &lt;yellow&gt;questing update&lt;reset&gt;\n")
+  end
+  qwn.updateTimer = tempTimer(3600, [[qwn.checkVersion()]])
+end
+
+function qwn.downloadVersions()
+  if qwn.updateTimer then
+    killTimer(qwn.updateTimer)
+    qwn.updateTimer = nil
+  end
+  if not qwn.updateWaiting and qwn.configs.downloadPath ~= "" then
+    local path, file = profilePath .. "/questing downloads", "/versions.lua"
+    qwn.downloading = true
+    downloadFile(path .. file, qwn.downloadPath .. file)
+    qwn.updateWaiting = true
+  end
+end
+
+local function updatePackage()
+    downloading = false
+    local path = profilePath .. "/questing downloads/QuestingWithNoax.xml"
+    disableAlias("Questing Update Alias")
+    qwn.updating = true
+    uninstallPackage("QuestingWithNoax")
+    installPackage(path)
+    qwn.updating = nil
+    cecho(noaxTag .. "Now You're Questing With Noax Script updated successfully!")
+end
+
+function qwn.downloadPackage()
+    local path, file = profilePath .. "/questing downloads", "/QuestingWithNoax.xml"
+    downloading = true
+    downloadFile(path .. file, qwn.downloadPath .. file)
+end
+
+--Event handler, what we do on what event
+function qwn.eventHandler(event, ...)
+  if event == "sysDataSendRequest" then
+    cecho(debugTag .. "sysDatSendRequest\n")
+    --check to prevent multiple version checks in a row without user intervention
+    display(qwn.updateWaiting)
+    display(qwn.updateTimer)
+    if qwn.updateWaiting and qwn.updateTimer then
+      qwn.updateWaiting = nil
+    --check to ensure version check cycle is started
+    elseif not qwn.updateWaiting and not qwn.updateTimer then
+      qwn.downloadVersions()
+    end
+  elseif event == "sysDownloadDone" and downloading then
+    local file = arg[1]
+    if string.ends(file,"/versions.lua") then
+      compareVersion()
+    elseif string.ends(file,"/QuestingWithNoax.xml") then
+      updatePackage()
+    end
+  elseif event == "sysDownloadError" and downloading then
+    local file = arg[1]
+    if string.ends(file,"/versions.lua") then
+      cecho(errTag .. "qwn dailed to download file versions.lua")
+    elseif string.ends(file,"/QuestingWithNoax.xml") then
+      cecho(errTag .. "qwn dailed to download file QuestingWithNoax.xml")
+    end
+  elseif event == "sysLoadEvent" or event == "sysInstall" then
+    --moved to AYT telnet event so it happenss post login
+    --config()
+  elseif event == "sysUninstallPackage" and not qwn.updating and arg[1] == "QuestingWithNoax" then
+    for _,id in ipairs(qwn.registeredEvents) do
+      killAnonymousEventHandler(id)
+    end
+  --the mudserver has been coded to send IAC AYT on connect and reconnect
+  elseif event == "sysTelnetEvent" and tonumber(arg[1]) == 246 then --246 is AYT
+    --cecho(debugTag .. "sysTelnetEvent was AYT")
+    config()
+  end
+end
+
+qwn.registeredEvents = { --all of the events we will need to trigger on
+  registerAnonymousEventHandler("sysDownloadDone", "qwn.eventHandler"),
+  registerAnonymousEventHandler("sysDownloadError", "qwn.eventHandler"),
+  registerAnonymousEventHandler("sysLoadEvent", "qwn.eventHandler"),
+  registerAnonymousEventHandler("sysInstall", "qwn.eventHandler"),
+  registerAnonymousEventHandler("sysDataSendRequest", "qwn.eventHandler"),
+  registerAnonymousEventHandler("sysUninstallPackage", "qwn.eventHandler"),
+  registerAnonymousEventHandler("sysTelnetEvent", "qwn.eventHandler"),
+  }</script>
+			<eventHandlerList />
+		</Script>
+	</ScriptPackage>
+	<KeyPackage />
+	<VariablePackage>
+		<HiddenVariables />
+	</VariablePackage>
+</MudletPackage>
