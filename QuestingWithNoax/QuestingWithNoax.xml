@@ -24,6 +24,7 @@
 --Values are formatted like this, questName:action
 --questName contains the string the game expects for the quest
 --action contains complete/incomplete/request
+--script must be enabled for the event to run the function
 
 function msdp.grab_QUEST_LIST()
   --cecho("&lt;yellow&gt;[ DEBUG ] - &lt;grey&gt;QUEST_LIST:\n")
