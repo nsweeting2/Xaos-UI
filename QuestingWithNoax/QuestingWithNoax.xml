@@ -85,7 +85,7 @@ profilePath = profilePath:gsub("\\","/") --fix the path for windows folks
 --Setup global table for QuestingWithNoax, we will nest almost everything in here.
 qwn = qwn or {
   ignoreQuests = {},
-  debug = true,
+  debug = false,
   version = 2.0, --version we compare for updating
   downloading = false, --if we are downloading a update
   downloadPath = "https://raw.githubusercontent.com/nsweeting2/Xaos-UI/main/QuestingWithNoax/", --path we download files from
