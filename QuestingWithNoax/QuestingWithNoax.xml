@@ -31,6 +31,7 @@
 --Values are formatted like this, questName:action
 --questName contains the string the game expects for the quest
 --action contains complete/incomplete/request
+--script must be enabled for the event to run the function
 
 function msdp.grab_QUEST_LIST()
   qwn.echo("msdp.grab_QUEST_LIST() invoked", 1)
@@ -124,6 +125,23 @@ local function saveConfigs()
   qwn.echo("setting a 60 second timer to run saveConfigs() again", 3)
   qwn.saveTimer = tempTimer(60, [[saveConfigs()]])
   qwn.echo("saveConfigs() is complete", 2)
+end
+
+--echo functions for style points
+local function debugEcho(text)
+  if qwn.debug then
+    cecho(debugTag .. text .. "\n")
+  end
+end
+
+local function noaxEcho(text)
+    cecho(noaxTag .. text .. "\n")
+end
+
+local function errorEcho(text)
+  if qwn.debug then
+    cecho(errTag .. text .. "\n")
+  end
 end
 
 local function config()
