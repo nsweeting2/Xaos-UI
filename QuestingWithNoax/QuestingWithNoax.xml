@@ -206,7 +206,7 @@ function qwn.eventHandler(event, ...)
   elseif event == "sysTelnetEvent" and tonumber(arg[1]) == 246 then --246 is AYT
     --cecho(debugTag .. "sysTelnetEvent was AYT")
     config()
-    dowloadVersions()
+    qwn.dowloadVersions()
   end
 end
 
