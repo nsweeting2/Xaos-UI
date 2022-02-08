@@ -99,32 +99,30 @@ local debugTag = "&lt;SkyBlue&gt;[DEBUG ]  - &lt;reset&gt;"
 local errTag = "&lt;ansiRed&gt;(&lt;Red&gt;ERROR &lt;ansiRed&gt;]  - &lt;reset&gt;"
 
 local function config()
+  cecho(debugTag .. "Questing Script: config() invoked\n")
   local defaults = qwn.defaults
   local configs = qwn.configs or {}
   local path = profilePath .. "/questing downloads"
-  --cecho(debugTag .. "config() invoked\n")
   if not io.exists(path) then lfs.mkdir(path) end
   --load stored configs from file if it exists
   if io.exists(path.."/configs.lua") then
     table.load(path.."/configs.lua",configs)
   end
-
   -- overwrite default values with stored config values
   configs = table.update(defaults, configs)
   qwn.configs = configs
-
   --we do not need to change update path
   --update to the current download path
-  --if qwn.downloadPath == " " then
-    --qwn.downloadPath = " "
+  --if qwn.configs.downloadPath == " " then
+    --qwn.configs.downloadPath = " "
   --end
-
   --configure the msdp we need for questing
   sendMSDP("REPORT","QUEST_LIST")
   cecho(noaxTag .. "Now You're Questing With Noax has been registered.\n")
 end
 
 local function compareVersion()
+  cecho(debugTag .. "Questing Script: compareVersion() invoked\n")
   qwn.downloading = false
   local path = profilePath .. "/questing downloads/versions.lua"
   local versions = {}
@@ -132,13 +130,14 @@ local function compareVersion()
   local pos = table.index_of(versions, qwn.version) or 0
   if pos ~= #versions then
     enableAlias("Questing Update Alias")
-    cecho(string.format(noaxTag .. "Questing With Noax Script is currently &lt;red&gt;%d&lt;reset&gt; versions behind.\n",#versions - pos))
-    cecho(noaxTag .. "To update now, please type: &lt;yellow&gt;questing update&lt;reset&gt;\n")
+    cecho(string.format(noaxTag .. "Questing With Noax Script is currently <red>%d<reset> versions behind.\n",#versions - pos))
+    cecho(noaxTag .. "To update now, please type: <yellow>questing update<reset>\n")
   end
   qwn.updateTimer = tempTimer(3600, [[qwn.checkVersion()]])
 end
 
 function qwn.downloadVersions()
+  cecho(debugTag .. "Questing Script: qwn.downloadVersions() invoked\n")
   if qwn.updateTimer then
     killTimer(qwn.updateTimer)
     qwn.updateTimer = nil
@@ -152,29 +151,30 @@ function qwn.downloadVersions()
 end
 
 local function updatePackage()
-    downloading = false
-    local path = profilePath .. "/questing downloads/QuestingWithNoax.xml"
-    disableAlias("Questing Update Alias")
-    qwn.updating = true
-    uninstallPackage("QuestingWithNoax")
-    installPackage(path)
-    qwn.updating = nil
-    cecho(noaxTag .. "Now You're Questing With Noax Script updated successfully!")
+  cecho(debugTag .. "Questing Script: updatePackage() invoked\n")
+  downloading = false
+  local path = profilePath .. "/questing downloads/QuestingWithNoax.xml"
+  disableAlias("Questing Update Alias")
+  qwn.updating = true
+  uninstallPackage("QuestingWithNoax")
+  installPackage(path)
+  qwn.updating = nil
+  cecho(noaxTag .. "Now You're Questing With Noax Script updated successfully!")
 end
 
 function qwn.downloadPackage()
-    local path, file = profilePath .. "/questing downloads", "/QuestingWithNoax.xml"
-    downloading = true
-    downloadFile(path .. file, qwn.downloadPath .. file)
+  cecho(debugTag .. "Questing Script: updatePackage() invoked\n")
+  local path, file = profilePath .. "/questing downloads", "/QuestingWithNoax.xml"
+  qwn.downloading = true
+  downloadFile(path .. file, qwn.downloadPath .. file)
 end
 
 --Event handler, what we do on what event
 function qwn.eventHandler(event, ...)
+  cecho(debugTag .. "Questing Script: qwnEventHandler() invoked\n")
   if event == "sysDataSendRequest" then
-    cecho(debugTag .. "sysDatSendRequest\n")
+    --cecho(debugTag .. "sysDatSendRequest\n")
     --check to prevent multiple version checks in a row without user intervention
-    display(qwn.updateWaiting)
-    display(qwn.updateTimer)
     if qwn.updateWaiting and qwn.updateTimer then
       qwn.updateWaiting = nil
     --check to ensure version check cycle is started
