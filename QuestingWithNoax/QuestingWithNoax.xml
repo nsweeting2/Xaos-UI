@@ -4,20 +4,13 @@
 	<TriggerPackage />
 	<TimerPackage />
 	<AliasPackage>
-		<AliasGroup isActive="yes" isFolder="yes">
-			<name>QuestingWithNoax</name>
-			<script></script>
+		<Alias isActive="yes" isFolder="no">
+			<name>Questing Update Alias</name>
+			<script>qwn.downloadPackage()</script>
 			<command></command>
-			<packageName>QuestingWithNoax</packageName>
-			<regex></regex>
-			<Alias isActive="yes" isFolder="no">
-				<name>Questing Update Alias</name>
-				<script>qwn.downloadPackage()</script>
-				<command></command>
-				<packageName></packageName>
-				<regex>^questing update$</regex>
-			</Alias>
-		</AliasGroup>
+			<packageName></packageName>
+			<regex>^questing update$</regex>
+		</Alias>
 	</AliasPackage>
 	<ActionPackage />
 	<ScriptPackage>
@@ -31,19 +24,15 @@
 --Values are formatted like this, questName:action
 --questName contains the string the game expects for the quest
 --action contains complete/incomplete/request
---script must be enabled for the event to run the function
 
 function msdp.grab_QUEST_LIST()
-  qwn.echo("msdp.grab_QUEST_LIST() invoked", 1)
   --cecho("&lt;yellow&gt;[ DEBUG ] - &lt;grey&gt;QUEST_LIST:\n")
   --check if we got a empty table, if so we are done
   if msdp.QUEST_LIST == "" then
-    qwn.echo("msdp.QUEST_LIST was empty", 3)
     return
   end
   --A table for us to turn our string into a table
   --all questmasters will be processed by this
-  qwn.echo("parsing msdp data into quests table", 3)
   local quests = {}
   for qm, q in pairs(msdp.QUEST_LIST) do
     for quest in rex.gmatch(tostring(q), [[(.+?\:\w+),]]) do
@@ -51,7 +40,6 @@ function msdp.grab_QUEST_LIST()
     end
   end
   --Now we loop the quests table and send commands
-  qwn.echo("parsing quests table and sending commands", 3)
   for k, v in pairs(quests) do
     local quest = ""
     local action = ""
@@ -63,7 +51,6 @@ function msdp.grab_QUEST_LIST()
       send("quest completed " .. tostring(quest))
     end
   end
-  qwn.echo("msdp.grab_QUEST_LIST() is complete", 2)
 end</script>
 			<eventHandlerList>
 				<string>msdp.QUEST_LIST</string>
@@ -96,7 +83,7 @@ profilePath = profilePath:gsub("\\","/") --fix the path for windows folks
 qwn = qwn or {
   neverQuests = {}, --table of quests the user never wants
   verbose = 1, --tiers of echos that make it to screen
-  version = 2.0, --version we compare for updating
+  version = 2.1, --version we compare for updating
   downloading = false, --if we are downloading a update
   downloadPath = "https://raw.githubusercontent.com/nsweeting2/Xaos-UI/main/QuestingWithNoax/", --path we download files from
   updating = false, --if we are installing and update
@@ -106,180 +93,105 @@ qwn = qwn or {
 local questTag = "&lt;DarkViolet&gt;[&lt;ansiMagenta&gt;QUEST &lt;DarkViolet&gt;]  - &lt;reset&gt;"
 
 --echo function for style points
---verbose: 0 = none, &gt;4 = everything
-function qwn.echo(text, verbose)
-  if verbose &lt; qwn.verbose then
+function qwn.echo(text)
     cecho(questTag .. text .. "\n")
-  end
 end
 
 local function saveConfigs()
-  qwn.echo("Questing Script: saveConfigs() invoked", 2)
   local configs = {}
   local path = profilePath .. "/questing with noax"
   configs.debug = qwn.debug
   configs.downloadPath = qwn.downloadPath
   configs.neverQuest = qwn.neverQuest
-  qwn.echo("saving configs.lua to " .. tostring(path), 3)
   table.save(path.."/configs.lua",configs)
-  qwn.echo("setting a 60 second timer to run saveConfigs() again", 3)
   qwn.saveTimer = tempTimer(60, [[saveConfigs()]])
-  qwn.echo("saveConfigs() is complete", 2)
-end
-
---echo functions for style points
-local function debugEcho(text)
-  if qwn.debug then
-    cecho(debugTag .. text .. "\n")
-  end
-end
-
-local function noaxEcho(text)
-    cecho(noaxTag .. text .. "\n")
-end
-
-local function errorEcho(text)
-  if qwn.debug then
-    cecho(errTag .. text .. "\n")
-  end
 end
 
 local function config()
-  qwn.echo("Questing Script: config() invoked", 2)
   local configs = {}
   local path = profilePath .. "/questing with noax"
   if not io.exists(path) then
-    qwn.echo("creating questing with noax folder", 3)
     lfs.mkdir(path)
-  else
-    qwn.echo("questing with noax folder already exists", 3)
   end
   --load stored configs from file if it exists
   if io.exists(path.."/configs.lua") then
-    qwn.echo("configs.lua file found", 3)
-    qwn.echo("Loading your configs from file.", 0)
     table.load(path.."/configs.lua",configs)
-    qwn.echo("setting qwn values from configs", 3)
     --there should be a better way to do this
     qwn.debug = configs.debug
     qwn.downloadPath = configs.downloadPath
     qwn.neverQuest = configs.neverQuest
-  else
-    qwn.echo("configs.lua file not found", 3)
   end
   --configure the msdp we need for questing
-  qwn.echo("Registering for msdp.QUEST_LIST", 2)
   sendMSDP("REPORT","QUEST_LIST")
-  qwn.echo("Now You're Questing With Noax has been registered.", 0)
-  qwn.echo("Config() is complete", 2)
+  qwn.echo("Now You're Questing With Noax has been registered.")
 end
 
 local function compareVersion()
-  qwn.echo("Questing Script: compareVersion() invoked", 2)
   local path = profilePath .. "/questing downloads/versions.lua"
   local versions = {}
   table.load(path, versions)
   local pos = table.index_of(versions, qwn.version) or 0
   if pos ~= #versions then
-    qwn.echo("qwn is out of date", 3)
-    qwn.echo("update alias enabled", 3)
     enableAlias("Questing Update Alias")
-    qwn.echo(string.format("Questing With Noax Script is currently %d versions behind.",#versions - pos), 0)
-    qwn.echo("To update now, please type: questing update", 0)
-  else
-    qwn.echo("qwn is up to date", 3)
+    qwn.echo(string.format("Questing With Noax Script is currently %d versions behind.",#versions - pos))
+    qwn.echo("To update now, please type: questing update")
   end
-  qwn.echo("compareVersions() is complete", 2)
 end
 
 function qwn.downloadVersions()
-  qwn.echo("Questing Script: qwn.downloadVersions() invoked", 2)
   if qwn.downloadPath ~= "" then
-    qwn.echo("pre download check passed", 3)
     local path, file = profilePath .. "/questing downloads", "/versions.lua"
-    qwn.echo("qwn.downloading set to true", 3)
     qwn.downloading = true
-    qwn.echo("downloading lua file from " .. tostring(qwn.downloadPath), 3)
     downloadFile(path .. file, qwn.downloadPath .. file)
-  else
-    qwn.echo("pre download check failed", 3)
   end
-  qwn.echo("qwn.downloadVersions() is complete", 2)
 end
 
 local function updatePackage()
-  qwn.echo("Questing Script: updatePackage() invoked", 2)
   local path = profilePath .. "/questing downloads/QuestingWithNoax.xml"
-  qwn.echo("update alias disabled", 3)
   disableAlias("Questing Update Alias")
-  qwn.echo("qwn.updating set to true", 3)
   qwn.updating = true
-  qwn.echo("uninstalling QuestingWithNoax", 3)
   uninstallPackage("QuestingWithNoax")
-  qwn.echo("reinstalling QuestingWithNoax", 3)
   installPackage(path)
-  qwn.echo("qwn.updating set to nil", 3)
   qwn.updating = nil
-  qwn.echo("Now You're Questing With Noax Script updated successfully!", 0)
+  qwn.echo("Now You're Questing With Noax Script updated successfully!")
   config()
-  qwn.echo("updatePackage() is complete", 2)
 end
 
 function qwn.downloadPackage()
-  qwn.echo("Questing Script: downloadPackage() invoked", 2)
   local path, file = profilePath .. "/questing downloads", "/QuestingWithNoax.xml"
-  qwn.echo("qwn.downloading set to true", 3)
   qwn.downloading = true
-  qwn.echo("downloading xml file from " .. tostring(qwn.downloadPath), 3)
   downloadFile(path .. file, qwn.downloadPath .. file)
-  qwn.echo("qwn.downloadPackage() is complete", 2)
 end
 
 function qwn.eventHandler(event, ...)
-  qwn.echo("Questing Script: qwnEventHandler() invoked", 2)
   if event == "sysDownloadDone" and qwn.downloading then
     local file = arg[1]
-    qwn.echo("event: sysDownloadDone, file: " ..tostring(file), 3)
     if string.ends(file,"/versions.lua") then
-      qwn.echo("qwn.downloading set to false", 3)
       qwn.downloading = false
       compareVersion()
     elseif string.ends(file,"/QuestingWithNoax.xml") then
-      qwn.echo("qwn.downloading set to false", 3)
       qwn.downloading = false
       updatePackage()
-    else
-      qwn.echo("file was not a file we handle", 3)
     end
   elseif event == "sysDownloadError" and downloading then
     local file = arg[1]
-    qwn.echo("event: sysDownloadError, file: " ..tostring(file), 3)
     if string.ends(file,"/versions.lua") then
-      qwn.echo("qwn failed to download file versions.lua", 1)
+      qwn.echo("qwn failed to download file versions.lua")
     elseif string.ends(file,"/QuestingWithNoax.xml") then
-      qwn.echo("qwn failed to download file QuestingWithNoax.xml", 1)
-    else
-      qwn.echo("file was not a file we handle", 3)
+      qwn.echo("qwn failed to download file QuestingWithNoax.xml")
     end
   elseif event == "sysUninstallPackage" and not qwn.updating and arg[1] == "QuestingWithNoax" then
-    qwn.echo("event: sysUninstallPackage", 3)
     for _,id in ipairs(qwn.registeredEvents) do
       killAnonymousEventHandler(id)
     end
   --the mudserver has been coded to send IAC AYT on connect and reconnect
   elseif event == "sysTelnetEvent" then
-    qwn.echo("event: sysTelnetEvent", 3)
     if tonumber(arg[1]) == 246 then --246 is AYT
-      qwn.echo("handled code: " .. tostring(arg[1]), 3)
-      qwn.echo("downloading set to false", 3)
       qwn.downloading = false
       config()
       qwn.downloadVersions()
-    else
-      qwn.echo("unhandled code: " .. tostring(arg[1]), 3)
     end
   end
-  qwn.echo("qwn.eventHandler() is complete", 2)
 end
 
 qwn.registeredEvents = { --all of the events we will need to trigger on
