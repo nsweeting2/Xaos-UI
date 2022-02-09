@@ -173,7 +173,7 @@ function qwn.eventHandler(event, ...)
       qwn.downloading = false
       updatePackage()
     end
-  elseif event == "sysDownloadError" and downloading then
+  elseif event == "sysDownloadError" and qwn.downloading then
     local file = arg[1]
     if string.ends(file,"/versions.lua") then
       qwn.echo("qwn failed to download file versions.lua")
@@ -197,7 +197,6 @@ end
 qwn.registeredEvents = { --all of the events we will need to trigger on
   registerAnonymousEventHandler("sysDownloadDone", "qwn.eventHandler"),
   registerAnonymousEventHandler("sysDownloadError", "qwn.eventHandler"),
-  registerAnonymousEventHandler("sysDataSendRequest", "qwn.eventHandler"),
   registerAnonymousEventHandler("sysUninstallPackage", "qwn.eventHandler"),
   registerAnonymousEventHandler("sysTelnetEvent", "qwn.eventHandler"),
   }</script>

@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE MudletPackage>
+<MudletPackage version="1.001">
+	<TriggerPackage>
+		<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>lineCapture</name>
+			<script>local line = matches[2]
+ct.lineHandler(tostring(line))</script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand></mCommand>
+			<packageName></packageName>
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile></mSoundFile>
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList>
+				<string>^(.*)$</string>
+			</regexCodeList>
+			<regexCodePropertyList>
+				<integer>1</integer>
+			</regexCodePropertyList>
+		</Trigger>
+	</TriggerPackage>
+	<TimerPackage />
+	<AliasPackage>
+		<Alias isActive="yes" isFolder="no">
+			<name>Tracker Update Alias</name>
+			<script>ct.downloadPackage()</script>
+			<command></command>
+			<packageName></packageName>
+			<regex>^tracker update$</regex>
+		</Alias>
+	</AliasPackage>
+	<ActionPackage />
+	<ScriptPackage>
+		<Script isActive="yes" isFolder="no">
+			<name>msdp.grab_ROUNDS</name>
+			<packageName></packageName>
+			<script>--This function fires on the msdp.ROUNDS event
+--msdp.ROUNDS increments every combat round, it value is truely unimportant
+--Values range from 0 to 2147483647
+--The important point is that if msdp.ROUNDS changed, it is a new round
+
+function msdp.grab_ROUNDS()
+  --Add a 51st table to ct.tracker, this is where we will copy in ct.ar
+  ct.tracker[#ct.tracker + 1] = { }
+  for k, v in pairs(ct.name) do
+    ct.ar[51] = 0
+  end
+  --Copy ct.cr into ct.tracker at the 51st table
+  for k, v in pairs(ct.ar) do
+    ct.tracker[51][k] = v
+  end
+  --Set everything in ct.ar to 0
+  ct.ar = {}
+  for k, v in pairs(ct.name) do
+    ct.ar[v] = 0
+  end
+  --Remove 1st table from tracker so that our 51st becomes 50th
+  while #ct.tracker &gt; 50 do
+    table.remove(ct.tracker, 1)
+  end
+  --Everything below here is for DEBUG
+  clearWindow("info_term")
+  for k in pairs(ct.tracker) do
+    --echo("info_term", tostring(k))
+    for key, val in pairs(ct.tracker[k]) do
+      echo("info_term", " " .. tostring(key) .. " " .. tostring(val) .. "\t")
+    end
+    echo("info_term", "\n")
+  end
+end</script>
+			<eventHandlerList>
+				<string>msdp.ROUNDS</string>
+			</eventHandlerList>
+		</Script>
+		<Script isActive="yes" isFolder="no">
+			<name>Combat Tracker Script</name>
+			<packageName></packageName>
+			<script>--Xaos combat tracker written by Noax and Quid.
+--Created January 2022
+
+--Updater code based on Jor'Mox's Generic Map Script,
+--I opted to check for updates only when a character is
+--connected or reconnected to the server to save on complexity.
+--I do this by handling a IAC AYT signal with sysTelnetEvent.
+
+--Requires the msdp protocol.
+
+--Setup global table for msdp, the mud/client will nest everything in here.
+--Keep in mind other packages will work with this table.
+--Table should always be created as seen below, don't overwrite.
+msdp = msdp or {}
+
+--setup profilePath so we can use in in functions below.
+local profilePath = getMudletHomeDir()
+profilePath = profilePath:gsub("\\","/") --fix the path for windows folks
+
+--Setup global table for CombatTracker, we will nest almost everything in here.
+ct = ct or {
+  verbose = 1, --tiers of echos that make it to screen
+  version = 1.0, --version we compare for updating
+  downloading = false, --if we are downloading a update
+  downloadPath = "https://raw.githubusercontent.com/nsweeting2/Xaos-UI/main/CombatTracker/", --path we download files from
+  updating = false, --if we are installing and update
+  rounds = 50, --number of rounds we want to record
+  name = { --names for our regex{} keys, and other places
+    "youHit", "youGotHit", "otherHit",
+    "youDodge", "theyDodge", "otherDodge",
+    "youParry", "theyParry", "otherParry",
+    "youBlock", "theyBlock", "otherBlock",
+    "youShield", "theyShield", "otherShield",
+    "youPhase", "theyPhase", "otherPhase",
+    "youAbsorb", "theyAbsorb", "otherAbsorb",
+    "youKinetic", "theyKinetic", "otherKinetic",
+    },
+  exp = { --regex for our regex{} values
+    [[^Your (?:pathetic|clumsy|fumbling|basic|lucky|shabby|average|competent|successful|skillful|well-aimed|effective|cunning|amazing|expert|deadly|vicious|wicked|brutal|powerful|incredible|masterful|monstrous|horrific|terrifying|savage|ungodly|MASSIVE|SADISTIC|-=GODLY=-) .+? (?:reflects off|misses|nicks|lightly skins|skins|lightly grazes|grazes|scratches|scrapes|hits|strikes|wounds|injures|mauls|scars|maims|mangles|destroys|decimates|guts|leaves GASHES|forever SCARS|DEMOLISHES|MASSACRES|DEVASTATES|does UNSPEAKABLE things to|SPLATTERS|-ANNIHILATES-|-=OBLITERATES=-|-=EVISCERATES=-|-=LAYS WASTE=- to|whiffs|biffs|lightly taps|taps|lightly touches|touches|feathers|strokes|contacts|jiggles|brushes up against|skimms|lightly rubs|nudges|prods|ravishes|pecks|smooches|fondles|leaves FEELINGS in|forever WOOS|lovingly FEEDS|gently AROUSES|lovingly CARESSES|does NAUGHTY things to|LEWDLY SPANKS|CREATES URGES within|GIVES JOY to|PROVIDES THE LOVE to|GIVES SWEET LOVIN' to) .+? \(\d+ dam\)$]],
+    [[^.*? (?:pathetic|clumsy|fumbling|basic|lucky|shabby|average|competent|successful|skillful|well-aimed|effective|cunning|amazing|expert|deadly|vicious|wicked|brutal|powerful|incredible|masterful|monstrous|horrific|terrifying|savage|ungodly|MASSIVE|SADISTIC|-=GODLY=-) .+? (?:reflects off|misses|nicks|lightly skins|skins|lightly grazes|grazes|scratches|scrapes|hits|strikes|wounds|injures|mauls|scars|maims|mangles|destroys|decimates|guts|leaves GASHES|forever SCARS|DEMOLISHES|MASSACRES|DEVASTATES|does UNSPEAKABLE things to|SPLATTERS|-ANNIHILATES-|-=OBLITERATES=-|-=EVISCERATES=-|-=LAYS WASTE=- to|whiffs|biffs|lightly taps|taps|lightly touches|touches|feathers|strokes|contacts|jiggles|brushes up against|skimms|lightly rubs|nudges|prods|ravishes|pecks|smooches|fondles|leaves FEELINGS in|forever WOOS|lovingly FEEDS|gently AROUSES|lovingly CARESSES|does NAUGHTY things to|LEWDLY SPANKS|CREATES URGES within|GIVES JOY to|PROVIDES THE LOVE to|GIVES SWEET LOVIN' to) (?:in you|your) .+? \(\d+ dam\)$]],
+    [[.*'s (?:pathetic|clumsy|fumbling|basic|lucky|shabby|average|competent|successful|skillful|well-aimed|effective|cunning|amazing|expert|deadly|vicious|wicked|brutal|powerful|incredible|masterful|monstrous|horrific|terrifying|savage|ungodly|MASSIVE|SADISTIC|-=GODLY=-) .+? (?:reflects off|misses|nicks|lightly skins|skins|lightly grazes|grazes|scratches|scrapes|hits|strikes|wounds|injures|mauls|scars|maims|mangles|destroys|decimates|guts|leaves GASHES|forever SCARS|DEMOLISHES|MASSACRES|DEVASTATES|does UNSPEAKABLE things to|SPLATTERS|-ANNIHILATES-|-=OBLITERATES=-|-=EVISCERATES=-|-=LAYS WASTE=- to|whiffs|biffs|lightly taps|taps|lightly touches|touches|feathers|strokes|contacts|jiggles|brushes up against|skimms|lightly rubs|nudges|prods|ravishes|pecks|smooches|fondles|leaves FEELINGS in|forever WOOS|lovingly FEEDS|gently AROUSES|lovingly CARESSES|does NAUGHTY things to|LEWDLY SPANKS|CREATES URGES within|GIVES JOY to|PROVIDES THE LOVE to|GIVES SWEET LOVIN' to) .+?.$]],
+    [[^You (?:roll to avoid|easily avoid|side-step|dodge) .*\.$]],
+    [[^.* (?:rolls to avoid|easily avoids|side-steps|dodges) your .*\.$]],
+    [[^.* (?:rolls to avoid|easily avoids|side-steps|dodges) .*'s .*\.$]],
+    [[^You(.*)parry (.*) with (.*)$]],
+    [[^(.*) parries your (.*) with (.*)$]],
+    [[^(.*) parries (.*)'s (.*) with (.)$]],
+    [[^You block (.*)'s (.*)$]],
+    [[^(.*) blocks your (.*)$]],
+    [[NA]],
+    [[^You block (.*)'s (.*) with (.*)!$]],
+    [[^(.*) blocks your (.*) with (.*)$]],
+    [[NA]],
+    [[^You phase to avoid (.*)'s (.*)$]],
+    [[^(.*) phases to avoid your (.*)$]],
+    [[NA]],
+    [[^Your (.*) absorb[\s] (.*)$]],
+    [[^(.*) absorb your (.*)$]],
+    [[^(.*)'s (.*) absorb[\s] (.*)'s (.*)$]],
+    [[^(.*) intercepts (.*)'s attack!$]],
+    [[^(.*) intercepts your attack!$]],
+    [[NA]],
+    },
+    regex = {}, --table we will combine names{} and exp{} into
+    tracker = {}, --table we will store all our recorded data in
+    ar = {}, --table we store active round data in before tracker{}
+  }
+
+--formatting for our standardized echos
+local ctTag = "&lt;firebrick&gt;[TRACKR]  - &lt;reset&gt;"
+
+--echo function for style points
+function ct.echo(text)
+    cecho(ctTag .. text .. "\n")
+end
+
+local function saveConfigs()
+  local configs = {}
+  local path = profilePath .. "/combat tracker"
+  configs.debug = ct.debug
+  configs.downloadPath = ct.downloadPath
+  table.save(path.."/configs.lua",configs)
+  ct.saveTimer = tempTimer(60, [[saveConfigs()]])
+end
+
+local function config()
+  local configs = {}
+  local path = profilePath .. "/combat tracker"
+  if not io.exists(path) then
+    lfs.mkdir(path)
+  end
+  --load stored configs from file if it exists
+  if io.exists(path.."/configs.lua") then
+    table.load(path.."/configs.lua",configs)
+    --there should be a better way to do this
+    ct.debug = configs.debug
+    ct.downloadPath = configs.downloadPath
+  end
+  --configure the msdp we need for tracker
+  sendMSDP("REPORT","ROUNDS")
+  --setup regex table, 
+  --verify we have the right amount of data
+  if #ct.name ~= #ct.exp then
+    ct.echo("config() failed due to unmatched table size.")
+    return
+  end
+  --Combine ct.name and ct.exp into a new table ct.regex
+  for k, v in pairs(ct.name) do
+    ct.regex[v] = ct.exp[k]
+  end
+  --Create ct.tracker to contain the number of matched lines per round
+  --We are going to go with 50 rounds of data, this can be adjusted up
+  for i = 1, tonumber(ct.rounds) do
+    ct.tracker[i] = { }
+    for k, v in pairs(ct.name) do
+      ct.tracker[i][v] = 0
+    end
+  end
+  --Create a container for our active round data
+  --This is like ct.tracker but only a single table
+  for k, v in pairs(ct.name) do
+    ct.ar[v] = 0
+  end  
+  ct.echo("Combat Tracker has been registered.")
+end
+
+local function compareVersion()
+  local path = profilePath .. "/combat tracker/versions.lua"
+  local versions = {}
+  table.load(path, versions)
+  local pos = table.index_of(versions, ct.version) or 0
+  if pos ~= #versions then
+    enableAlias("Tracker Update Alias")
+    ct.echo(string.format("Combat Tracker is currently %d versions behind.",#versions - pos))
+    ct.echo("To update now, please type: tracker update")
+  end
+end
+
+function ct.downloadVersions()
+  if ct.downloadPath ~= "" then
+    local path, file = profilePath .. "/combat tracker", "/versions.lua"
+    ct.downloading = true
+    downloadFile(path .. file, ct.downloadPath .. file)
+  end
+end
+
+local function updatePackage()
+  local path = profilePath .. "/combat tracker/CombatTracker.xml"
+  disableAlias("Tracker Update Alias")
+  ct.updating = true
+  uninstallPackage("CombatTracker")
+  installPackage(path)
+  ct.updating = nil
+  ct.echo("Combat Tracker Script updated successfully!")
+  config()
+end
+
+function ct.downloadPackage()
+  local path, file = profilePath .. "/combat tracker", "/CombatTracker.xml"
+  ct.downloading = true
+  downloadFile(path .. file, ct.downloadPath .. file)
+end
+
+function ct.eventHandler(event, ...)
+  if event == "sysDownloadDone" and ct.downloading then
+    local file = arg[1]
+    if string.ends(file,"/versions.lua") then
+      ct.downloading = false
+      compareVersion()
+    elseif string.ends(file,"/CombatTracker.xml") then
+      ct.downloading = false
+      updatePackage()
+    end
+  elseif event == "sysDownloadError" and ct.downloading then
+    local file = arg[1]
+    if string.ends(file,"/versions.lua") then
+      ct.echo("ct failed to download file versions.lua")
+    elseif string.ends(file,"/CombatTracker.xml") then
+      ct.echo("ct failed to download file CombatTracker.xml")
+    end
+  elseif event == "sysUninstallPackage" and not ct.updating and arg[1] == "CombatTracker" then
+    for _,id in ipairs(ct.registeredEvents) do
+      killAnonymousEventHandler(id)
+    end
+  --the mudserver has been coded to send IAC AYT on connect and reconnect
+  elseif event == "sysTelnetEvent" then
+    if tonumber(arg[1]) == 246 then --246 is AYT
+      ct.downloading = false
+      config()
+      ct.downloadVersions()
+    end
+  end
+end
+
+--This function gets a line from the mud and runs it through ct.regex
+--When it matches something we increment that location in ct.ar
+function ct.lineHandler(line)
+  for k, v in pairs(ct.regex) do
+    if rex.find(tostring(line), v) then
+      ct.ar[k] = ct.ar[k] + 1
+      ct.echo("DEBUG: " .. tostring(k))
+      break
+    end
+  end
+end
+
+ct.registeredEvents = { --all of the events we will need to trigger on
+  registerAnonymousEventHandler("sysDownloadDone", "ct.eventHandler"),
+  registerAnonymousEventHandler("sysDownloadError", "ct.eventHandler"),
+  registerAnonymousEventHandler("sysUninstallPackage", "ct.eventHandler"),
+  registerAnonymousEventHandler("sysTelnetEvent", "ct.eventHandler"),
+  }</script>
+			<eventHandlerList />
+		</Script>
+	</ScriptPackage>
+	<KeyPackage />
+	<VariablePackage>
+		<HiddenVariables />
+		<VariableGroup>
+			<name>msdp</name>
+			<keyType>4</keyType>
+			<value></value>
+			<valueType>5</valueType>
+			<VariableGroup>
+				<name>COMMANDS</name>
+				<keyType>4</keyType>
+				<value></value>
+				<valueType>5</valueType>
+				<Variable>
+					<name>1</name>
+					<keyType>3</keyType>
+					<value>LIST</value>
+					<valueType>4</valueType>
+				</Variable>
+				<Variable>
+					<name>2</name>
+					<keyType>3</keyType>
+					<value>REPORT</value>
+					<valueType>4</valueType>
+				</Variable>
+				<Variable>
+					<name>3</name>
+					<keyType>3</keyType>
+					<value>RESET</value>
+					<valueType>4</valueType>
+				</Variable>
+				<Variable>
+					<name>4</name>
+					<keyType>3</keyType>
+					<value>SEND</value>
+					<valueType>4</valueType>
+				</Variable>
+				<Variable>
+					<name>5</name>
+					<keyType>3</keyType>
+					<value>UNREPORT</value>
+					<valueType>4</valueType>
+				</Variable>
+			</VariableGroup>
+			<Variable>
+				<name>QUEST_LIST</name>
+				<keyType>4</keyType>
+				<value></value>
+				<valueType>4</valueType>
+			</Variable>
+			<Variable>
+				<name>SERVER_ID</name>
+				<keyType>4</keyType>
+				<value></value>
+				<valueType>4</valueType>
+			</Variable>
+		</VariableGroup>
+	</VariablePackage>
+</MudletPackage>
